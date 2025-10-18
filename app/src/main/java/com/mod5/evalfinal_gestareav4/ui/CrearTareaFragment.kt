@@ -1,4 +1,4 @@
-package com.mod5.evalfinal_gestareav4
+package com.mod5.evalfinal_gestareav4.ui
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
@@ -15,6 +15,9 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import java.util.Calendar
 import android.widget.*
+import com.mod5.evalfinal_gestareav4.R
+import com.mod5.evalfinal_gestareav4.MainActivity
+import com.mod5.evalfinal_gestareav4.viewmodel.TaskViewModel
 
 class CrearTareaFragment : Fragment() {
 
@@ -41,10 +44,10 @@ class CrearTareaFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.crear_tarea,
-                                        container,
-                                        false)
+            container,
+            false)
 
-        // Inicializa el ViewModel
+        // Inicializa el ViewModel, usando requireActivity() para scope compartido
         taskViewModel = ViewModelProvider(requireActivity()).get(TaskViewModel::class.java)
 
         // Inicialización los elementos del layout
@@ -76,73 +79,90 @@ class CrearTareaFragment : Fragment() {
             checkBoxRequiresAlarm.isChecked = args.getBoolean(TASK_ALARM_KEY)
 
             // Setea los Spinners para estado y categoría
-            val statusAdapter = spinnerStatus.adapter as? ArrayAdapter<String>
-            statusAdapter?.getPosition(args.getString(TASK_STATUS_KEY))
-                ?.let { spinnerStatus.setSelection(it) }
+            (spinnerStatus.adapter as? ArrayAdapter<String>)?.let { adapter ->
+                val statusArg = args.getString(TASK_STATUS_KEY)
+                if (statusArg != null) {
+                    spinnerStatus.setSelection(adapter.getPosition(statusArg))
+                }
+            }
 
-            val categoryAdapter = spinnerCategory.adapter as? ArrayAdapter<String>
-            categoryAdapter?.getPosition(args.getString(TASK_CATEGORY_KEY))
-                ?.let { spinnerCategory.setSelection(it) }
+            (spinnerCategory.adapter as? ArrayAdapter<String>)?.let { adapter ->
+                spinnerCategory.setSelection(adapter.getPosition(args.getString(TASK_CATEGORY_KEY)))
+            }
 
             buttonGrabar.text = "Actualizar Tarea" // Cambia el texto para edición
         } ?: run {
             buttonGrabar.text = "Guardar Tarea" // Texto por defecto para creación
         }
 
-        // Observador para los errores de estado
+        // Listener del botón: Solo inicia la acción de guardado (V4)
+        buttonGrabar.setOnClickListener {
+            saveTaskAction()
+        }
+
+        // --- INICIO DE LA MEJORA (V4): Observador de estado ---
+        // Observamos el mensaje de estado del ViewModel.
+        // La navegación se realiza SÓLO después de que el ViewModel confirme el éxito.
         taskViewModel.statusMessage.observe(viewLifecycleOwner) { message ->
             message?.let {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
-                taskViewModel.clearStatusMessage()
+                taskViewModel.clearStatusMessage() // Limpia el mensaje para evitar repeticiones
+
+                // Si el mensaje indica éxito (contiene "guardada" o "actualizada"), navegamos.
+                if (it.contains("guardada") || it.contains("actualizada")) {
+                    resetFormFields()
+                    // Navegación segura SOLO al confirmar el guardado exitoso
+                    (activity as? MainActivity)?.loadFragment(VerTareasFragment())
+                }
             }
         }
+        // --- FIN DE LA MEJORA (V4) ---
 
-        // Listener del botón
-        buttonGrabar.setOnClickListener {
-            // Captura datos
-            val taskName        = editTextTaskName.text.toString().trim()
-            val taskDescription = editTextTaskDescription.text.toString().trim()
-            val taskStatus      = spinnerStatus.selectedItem.toString()
-            val taskCategory    = spinnerCategory.selectedItem.toString()
-            val requiresAlarm   = checkBoxRequiresAlarm.isChecked
-
-            // Validamos para dar feedback rápido en la interfaz.
-            if (taskName.isEmpty() || taskDescription.isEmpty() || selectedDate.isEmpty() || selectedTime.isEmpty()) {
-                Toast.makeText(requireContext(),
-                    "Falta completar información.",
-                    Toast.LENGTH_LONG).show()
-                return@setOnClickListener
-            }
-
-            // Validación de permisos para alarma
-            if (requiresAlarm &&
-                android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-                requireContext().checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                != android.content.pm.PackageManager.PERMISSION_GRANTED)
-            {
-                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                Toast.makeText(requireContext(),
-                    "Falta autorizar permiso de notificación. Intente de nuevo.",
-                    Toast.LENGTH_LONG).show()
-                return@setOnClickListener
-            }
-
-            // Si la validación es exitosa, llama al ViewModel
-            taskViewModel.saveOrUpdateTask(
-                id            = taskId,
-                name          = taskName,
-                description   = taskDescription,
-                status        = taskStatus,
-                date          = selectedDate,
-                time          = selectedTime,
-                category      = taskCategory,
-                requiresAlarm = requiresAlarm
-            )
-            // Vuelve a la vista
-            (activity as? MainActivity)?.loadFragment(VerTareasFragment())
-            resetFormFields()
-        }
         return view
+    }
+
+    // Contiene toda la lógica de validación y llamada al ViewModel
+    private fun saveTaskAction() {
+        // Captura datos y valida campos
+        val taskName        = editTextTaskName.text.toString().trim()
+        val taskDescription = editTextTaskDescription.text.toString().trim()
+        val taskStatus      = spinnerStatus.selectedItem.toString()
+        val taskCategory    = spinnerCategory.selectedItem.toString()
+        val requiresAlarm   = checkBoxRequiresAlarm.isChecked
+
+        // Valida campos obligatorios
+        if (taskName.isEmpty() || selectedDate.isEmpty() || selectedTime.isEmpty()) {
+            Toast.makeText(requireContext(),
+                "Debe completar campos obligatorios: Nombre, Fecha y Hora.",
+                Toast.LENGTH_LONG).show()
+            return
+        }
+
+        // 1. Validación de permisos para alarma (Android 13+)
+        if (requiresAlarm &&
+            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            requireContext().checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+            != android.content.pm.PackageManager.PERMISSION_GRANTED)
+        {
+            requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            Toast.makeText(requireContext(),
+                "Falta autorizar permiso de notificación. Intente de nuevo.",
+                Toast.LENGTH_LONG).show()
+            return
+        }
+
+        // 2. Llama al ViewModel para guardar/actualizar
+        taskViewModel.saveOrUpdateTask(
+            id            = taskId,
+            name          = taskName,
+            description   = taskDescription,
+            status        = taskStatus,
+            date          = selectedDate,
+            time          = selectedTime,
+            category      = taskCategory,
+            requiresAlarm = requiresAlarm
+        )
+        // NOTA V4: Se ha eliminado la navegación inmediata de aquí.
     }
 
     // Métodos auxiliares (DatePicker, TimePicker, etc.)
@@ -157,7 +177,7 @@ class CrearTareaFragment : Fragment() {
                 Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(requireContext(),
-                "ALERTA: Falta autorizar permiso, la alarma no funcionará.",
+                "ALERTA: Permiso denegado, la alarma no funcionará.",
                 Toast.LENGTH_LONG).show()
         }
     }
@@ -172,13 +192,9 @@ class CrearTareaFragment : Fragment() {
         selectedDate = ""
         selectedTime = ""
 
-        // Resetea los Spinners
-        (spinnerStatus.adapter as? ArrayAdapter<String>)?.let { adapter ->
-            spinnerStatus.setSelection(adapter.getPosition("Pendiente"))
-        }
-        (spinnerCategory.adapter as? ArrayAdapter<String>)?.let { adapter ->
-            spinnerCategory.setSelection(adapter.getPosition("Evento"))
-        }
+        // Resetea los Spinners a la posición 0
+        spinnerStatus.setSelection(0)
+        spinnerCategory.setSelection(0)
 
         taskId    = null
         isEditing = false
@@ -191,9 +207,8 @@ class CrearTareaFragment : Fragment() {
         val day        = calendar.get(Calendar.DAY_OF_MONTH)
         val datePicker = DatePickerDialog(requireContext(),
             { _, selectedYear,
-                           selectedMonth,
-                           selectedDay ->
-                // Guarda la fecha
+              selectedMonth,
+              selectedDay ->
                 updateDateTimeFields(selectedYear,
                     selectedMonth,
                     selectedDay,
@@ -207,6 +222,7 @@ class CrearTareaFragment : Fragment() {
         val calendar = Calendar.getInstance()
         val hour     = calendar.get(Calendar.HOUR_OF_DAY)
         val minute   = calendar.get(Calendar.MINUTE)
+
         val timePicker = TimePickerDialog(requireContext(),
             { _, selectedHour, selectedMinute ->
                 updateDateTimeFields(-1, -1, -1, selectedHour, selectedMinute)
@@ -215,23 +231,21 @@ class CrearTareaFragment : Fragment() {
         timePicker.show()
     }
 
-    private fun updateDateTimeFields(year: Int,
-                                     month: Int,
-                                     day: Int,
-                                     hour: Int,
-                                     minute: Int) {
+    private fun updateDateTimeFields(year: Int, month: Int, day: Int, hour: Int, minute: Int) {
         if (year != -1) {
+            // Formato DD/MM/YYYY
             selectedDate = String.format("%02d/%02d/%d", day, month + 1, year)
             editTextTaskDate.setText(selectedDate)
         }
         if (hour != -1) {
-            // Actualiza la hora (formato HH:MM)
+            // Formato HH:MM
             selectedTime = String.format("%02d:%02d", hour, minute)
             editTextTaskTime.setText(selectedTime)
         }
     }
 
     companion object {
+        // Constantes de Bundle Keys
         const val TASK_ID_KEY          = "task_id"
         const val TASK_NAME_KEY        = "task_name"
         const val TASK_DESCRIPTION_KEY = "task_description"
@@ -241,7 +255,6 @@ class CrearTareaFragment : Fragment() {
         const val TASK_CATEGORY_KEY    = "task_category"
         const val TASK_ALARM_KEY       = "task_alarm"
 
-        // Crea una instancia para editar una tarea
         @JvmStatic
         fun newInstanceForEditing(taskId: String,
                                   taskName: String,
@@ -252,7 +265,7 @@ class CrearTareaFragment : Fragment() {
                                   taskCategory: String,
                                   requiresAlarm: Boolean): CrearTareaFragment {
             val fragment = CrearTareaFragment()
-            val args     = Bundle().apply {
+            val args = Bundle().apply {
                 putString(TASK_ID_KEY, taskId)
                 putString(TASK_NAME_KEY, taskName)
                 putString(TASK_DESCRIPTION_KEY, taskDescription)
@@ -266,7 +279,7 @@ class CrearTareaFragment : Fragment() {
             return fragment
         }
 
-        // Crea una tarea con los mismos args.
+        // Método para crear una tarea.
         fun newInstanceForCreation(): CrearTareaFragment {
             return CrearTareaFragment()
         }

@@ -1,4 +1,4 @@
-package com.mod5.evalfinal_gestareav4
+package com.mod5.evalfinal_gestareav4.adapter
 
 import android.view.LayoutInflater
 import android.view.View
@@ -6,22 +6,19 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.mod5.evalfinal_gestareav4.R
+import com.mod5.evalfinal_gestareav4.data.Task
 
-data class Task(
-    val id             : String,
-    val name           : String,
-    val description    : String,
-    val status         : String,
-    val date           : String,
-    val time           : String,
-    val category       : String,
-    val requiresAlarm  : Boolean
-)
-
+/**
+ * Adaptador para mostrar la lista de Tareas en un RecyclerView.
+ *
+ * @param tasks La lista inicial de tareas a mostrar.
+ * @param onItemClick Callback para manejar el clic en un elemento (típicamente para edición).
+ * @param onDeleteClick Callback para manejar el clic en el botón de eliminar.
+ */
 class TaskAdapter(
     private var tasks        : List<Task>,
     private val onItemClick  : (Task) -> Unit,
-    // Callback para manejar el evento de eliminación
     private val onDeleteClick: (Task) -> Unit
 ) : RecyclerView.Adapter<TaskAdapter.TaskViewHolder>() {
 
@@ -33,23 +30,19 @@ class TaskAdapter(
 
     override fun onBindViewHolder(holder: TaskViewHolder, position: Int) {
         val task = tasks[position]
-        // Callback de eliminación
+        // Vincula los datos y pasa los callbacks
         holder.bind(task, onItemClick, onDeleteClick, position + 1)
     }
 
     override fun getItemCount(): Int = tasks.size
 
-    /**
-     * Permite que el Fragment/ViewModel actualice la lista.
-     * Esto se llama cuando el LiveData en el ViewModel cambia.
-     */
+    // Cuando el LiveData en el ViewModel cambia, se actualiza la lista en el Fragment/ViewModel .
     fun updateTasks(newTasks: List<Task>) {
         this.tasks = newTasks
-        notifyDataSetChanged() // lanza la notificación a RecyclerView que los datos han cambiado
+        notifyDataSetChanged() // realza la notificación del cambio
     }
 
     class TaskViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        // Ref layout
         private val taskIdOrdinal  : TextView = itemView.findViewById(R.id.textViewTaskIdOrdinal)
         private val taskIdUuid     : TextView = itemView.findViewById(R.id.textViewTaskIdUuid)
         private val taskName       : TextView = itemView.findViewById(R.id.textViewTaskName)
@@ -58,25 +51,32 @@ class TaskAdapter(
         private val taskStatus     : TextView = itemView.findViewById(R.id.textViewTaskStatus)
         private val taskCategory   : TextView = itemView.findViewById(R.id.textViewTaskCategory)
         private val taskAlarm      : TextView = itemView.findViewById(R.id.textViewTaskAlarm)
-
-        // Botón eliminación
-        private val buttonDelete: Button = itemView.findViewById(R.id.buttonDeleteTask)
+        private val buttonDelete   : Button   = itemView.findViewById(R.id.buttonDeleteTask)
 
         fun bind(task: Task, onItemClick: (Task) -> Unit, onDeleteClick: (Task) -> Unit, ordinalId: Int) {
             taskIdOrdinal.text   = "ID  : #$ordinalId"
-            taskIdUuid.text      = "UUID: ${task.id}"
+            taskIdUuid.text      = "UUID: ${task.id.substring(0, 8)}..." // Muestra parte del UUID
             taskName.text        = task.name
             taskDescription.text = task.description
-            taskDateTime.text    = "Fecha y Hora: ${task.date} - ${task.time}"
+            taskDateTime.text    = "Fecha/Hora: ${task.date} - ${task.time}"
             taskStatus.text      = "Estado: ${task.status}"
             taskCategory.text    = "Tipo: ${task.category}"
             taskAlarm.text       = if (task.requiresAlarm) "Alarma: ✅ ON" else "Alarma: ❌ OFF"
 
-            // Listener para Edición
+            // Listener para Edición (toda la fila)
             itemView.setOnClickListener { onItemClick(task) }
 
-            // Listener para Eliminación
+            // Listener para Eliminación (solo el botón)
             buttonDelete.setOnClickListener { onDeleteClick(task) }
+
+            // Lógica visual adicional para el estado
+            val context = itemView.context
+            val statusColor = when (task.status) {
+                "Completada" -> context.getColor(R.color.green_completed)
+                "Cancelada"  -> context.getColor(R.color.red_cancelled)
+                else -> context.getColor(R.color.blue_pending)
+            }
+            taskStatus.setTextColor(statusColor)
         }
     }
 }

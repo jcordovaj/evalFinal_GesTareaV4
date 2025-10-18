@@ -11,6 +11,10 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentTransaction
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.mod5.evalfinal_gestareav4.data.Task
+import com.mod5.evalfinal_gestareav4.ui.VerTareasFragment
+import com.mod5.evalfinal_gestareav4.ui.CrearTareaFragment
+import com.mod5.evalfinal_gestareav4.viewmodel.TaskViewModel
 
 class MainActivity : AppCompatActivity() {
     private lateinit var mainContentLayout: LinearLayout
@@ -82,6 +86,15 @@ class MainActivity : AppCompatActivity() {
             requiresAlarm   = task.requiresAlarm
         )
         loadFragment(fragment)
+    }
+
+    // NUEVO: Método para navegar a la lista de tareas (usado por CrearTareaFragment después de guardar)
+    fun navigateToTaskList() {
+        // Carga de nuevo el fragmento de lista para forzar el refresco de datos.
+        loadFragment(VerTareasFragment())
+        // Actualiza la selección visual en la barra de navegación inferior.
+        val bottomNavigationView: BottomNavigationView = findViewById(R.id.bottom_navigation)
+        bottomNavigationView.selectedItemId = R.id.nav_view_tasks
     }
 
     fun loadFragment(fragment: Fragment) {
