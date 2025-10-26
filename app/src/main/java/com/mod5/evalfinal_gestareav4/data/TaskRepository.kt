@@ -18,7 +18,7 @@ class TaskRepository(application: Application) {
         }
     }
 
-    //Se adaptó para leer todas las tareas del archivo CSV en forma asíncrona mediante 'Dispatchers.IO'
+    // Se adaptó para leer todas las tareas del archivo CSV en forma asíncrona mediante 'Dispatchers.IO'
     suspend fun readAllTasks(): List<Task> = withContext(Dispatchers.IO) {
         val tasks = mutableListOf<Task>()
         if (!file.exists()) return@withContext tasks
@@ -38,9 +38,7 @@ class TaskRepository(application: Application) {
             .thenByDescending { it.time })
     }
 
-    /**
-     * Guarda la lista completa de tareas en el CSV (Función auxiliar privada).
-     */
+    // Guarda la lista completa de tareas en el CSV (Función auxiliar privada).
     private fun saveAllTasks(tasks: List<Task>): Boolean {
         return try {
             BufferedWriter(FileWriter(file)).use { writer ->
@@ -57,19 +55,15 @@ class TaskRepository(application: Application) {
         }
     }
 
-    /**
-     * Guarda una nueva tarea.
-     */
+    // Guarda una nueva tarea.
     suspend fun saveTaskToCSV(task: Task): Boolean = withContext(Dispatchers.IO) {
-        // Leemos todo, añadimos la nueva tarea y guardamos todo
+        // Se añade la nueva tarea y se guarda
         val tasks = readAllTasks().toMutableList()
         tasks.add(task)
         saveAllTasks(tasks)
     }
 
-    /**
-     * Actualiza una tarea existente.
-     */
+    // Actualiza una tarea existente.
     suspend fun updateTaskInCSV(updatedTask: Task): Boolean = withContext(Dispatchers.IO) {
         // Leemos todo para encontrar la tarea a actualizar
         val tasks = readAllTasks().toMutableList()
@@ -84,9 +78,7 @@ class TaskRepository(application: Application) {
         }
     }
 
-    /**
-     * Elimina una tarea por ID.
-     */
+    // Elimina una tarea por ID.
     suspend fun deleteTaskById(id: String): Boolean = withContext(Dispatchers.IO) {
         val tasks = readAllTasks().toMutableList()
         val originalSize = tasks.size

@@ -93,7 +93,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             if (success) {
                 _statusMessage.postValue(
                     "Tarea ${if (isEditing) "actualizada" else "guardada"} correctamente")
-                loadTasks() // Recarga los datos y el balance
+                loadTasks() // Recarga los datos
             } else {
                 _statusMessage.postValue("Error al guardar la tarea")
             }

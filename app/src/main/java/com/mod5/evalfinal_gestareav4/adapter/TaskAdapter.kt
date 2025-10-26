@@ -11,7 +11,6 @@ import com.mod5.evalfinal_gestareav4.data.Task
 
 /**
  * Adaptador para mostrar la lista de Tareas en un RecyclerView.
- *
  * @param tasks La lista inicial de tareas a mostrar.
  * @param onItemClick Callback para manejar el clic en un elemento (típicamente para edición).
  * @param onDeleteClick Callback para manejar el clic en el botón de eliminar.
@@ -53,7 +52,8 @@ class TaskAdapter(
         private val taskAlarm      : TextView = itemView.findViewById(R.id.textViewTaskAlarm)
         private val buttonDelete   : Button   = itemView.findViewById(R.id.buttonDeleteTask)
 
-        fun bind(task: Task, onItemClick: (Task) -> Unit, onDeleteClick: (Task) -> Unit, ordinalId: Int) {
+        fun bind(task: Task, onItemClick: (Task) -> Unit,
+                 onDeleteClick: (Task) -> Unit, ordinalId: Int) {
             taskIdOrdinal.text   = "ID  : #$ordinalId"
             taskIdUuid.text      = "UUID: ${task.id.substring(0, 8)}..." // Muestra parte del UUID
             taskName.text        = task.name
